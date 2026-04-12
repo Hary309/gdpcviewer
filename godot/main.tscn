@@ -1,0 +1,85 @@
+[gd_scene format=3 uid="uid://besq7mehn23bf"]
+
+[ext_resource type="Script" uid="uid://d4faml80a1i7x" path="res://main.gd" id="1_ig7tw"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_7dm0k"]
+font_size = 28
+
+[sub_resource type="TorusMesh" id="TorusMesh_7dm0k"]
+
+[node name="Node3D" type="Node3D" unique_id=350803295]
+script = ExtResource("1_ig7tw")
+
+[node name="HSplitContainer" type="HSplitContainer" parent="." unique_id=84816473]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+split_offsets = PackedInt32Array(-512)
+split_offset = -512
+
+[node name="Panel" type="PanelContainer" parent="HSplitContainer" unique_id=2138695802]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 3.31
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HSplitContainer/Panel" unique_id=1771377746]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="HSplitContainer/Panel/VBoxContainer" unique_id=1914755475]
+custom_minimum_size = Vector2(0, 67.16)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+size_flags_stretch_ratio = 20.0
+text = "Import Scan"
+label_settings = SubResource("LabelSettings_7dm0k")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="MarginContainer" type="MarginContainer" parent="HSplitContainer/Panel/VBoxContainer" unique_id=1800478886]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="Button" type="Button" parent="HSplitContainer/Panel/VBoxContainer/MarginContainer" unique_id=2023511401]
+custom_minimum_size = Vector2(0, 75.395)
+layout_mode = 2
+text = "load sth"
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="HSplitContainer" unique_id=1863962645]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.84
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="HSplitContainer/SubViewportContainer" unique_id=862962532]
+handle_input_locally = false
+size = Vector2i(918, 648)
+size_2d_override_stretch = true
+render_target_update_mode = 4
+
+[node name="Camera3D" type="Camera3D" parent="HSplitContainer/SubViewportContainer/SubViewport" unique_id=1187295974]
+transform = Transform3D(0.9996566, 0.0011061874, 0.026180701, 0.00033994333, 0.99847704, -0.05516771, -0.026201855, 0.055157665, 0.99813384, 0, 0, 5.3239717)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="HSplitContainer/SubViewportContainer/SubViewport" unique_id=96925272]
+transform = Transform3D(1, 0, 0, 0, 0.8356157, -0.5493145, 0, 0.5493145, 0.8356157, 0, 0, -2.590651)
+mesh = SubResource("TorusMesh_7dm0k")
+
+[node name="E57FileDialog" type="FileDialog" parent="." unique_id=1870401945]
+oversampling_override = 1.0
+title = "Open a File"
+position = Vector2i(0, 36)
+file_mode = 0
+display_mode = 1
+access = 2
+use_native_dialog = true
+
+[connection signal="pressed" from="HSplitContainer/Panel/VBoxContainer/MarginContainer/Button" to="." method="_on_button_pressed"]
+[connection signal="file_selected" from="E57FileDialog" to="." method="_on_e_57_file_dialog_file_selected"]
