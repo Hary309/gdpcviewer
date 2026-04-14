@@ -10,15 +10,20 @@
 
 #include <gdextension_interface.h>
 
+#include <random>
+#include <vector>
+
 using namespace godot;
 
-class PointCloudLoader : public RefCounted {
+class PointCloudLoader : public RefCounted
+{
 	GDCLASS(PointCloudLoader, RefCounted)
 
 protected:
 	static void _bind_methods()
 	{
-		godot::ClassDB::bind_method(D_METHOD("load", "path"), &PointCloudLoader::load);
+		godot::ClassDB::bind_method(D_METHOD("load_random", "point_count"), &PointCloudLoader::load_random);
+		godot::ClassDB::bind_method(D_METHOD("load_random_range", "point_count", "min_pos", "max_pos"), &PointCloudLoader::load_random_range);
 		ADD_SIGNAL(MethodInfo("chunk_loaded", PropertyInfo(Variant::Type::OBJECT, "mesh")));
 	}
 
@@ -26,23 +31,62 @@ public:
 	PointCloudLoader() = default;
 	~PointCloudLoader() override = default;
 
-	void load(const String &path)
+	// Generate random point cloud with default range (-100 to 100)
+	void load_random(int point_count)
 	{
+		load_random_range(point_count, -100.0f, 100.0f);
+	}
+
+	// Generate random point cloud with custom range
+	void load_random_range(int point_count, float min_pos, float max_pos)
+	{
+		if (point_count <= 0)
+		{
+			return;
+		}
+
+		// Random number generators
+		std::random_device rd;
+		std::mt19937 gen(rd());
+		std::uniform_real_distribution<float> position_dist(min_pos, max_pos);
+		std::uniform_real_distribution<float> color_dist(0.0f, 1.0f);
+
+		// Create arrays for mesh data
+		PackedVector3Array positions;
+		PackedColorArray colors;
+
+		positions.resize(point_count);
+		colors.resize(point_count);
+
+		// Generate random points
+		for (int i = 0; i < point_count; i++)
+		{
+			positions[i] = Vector3(
+				position_dist(gen),
+				position_dist(gen),
+				position_dist(gen)
+			);
+
+			colors[i] = Color(
+				color_dist(gen),
+				color_dist(gen),
+				color_dist(gen),
+				1.0f  // Alpha
+			);
+		}
+
+		// Create mesh
 		Ref<ArrayMesh> mesh;
-		mesh->surface_get_arrays(0);
 		mesh.instantiate();
 
-		auto array = Array();
-		array[Mesh::ARRAY_VERTEX] = PackedVector3Array({ Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(0, 1, 0) });
+		Array array;
+		array.resize(Mesh::ARRAY_MAX);
+		array[Mesh::ARRAY_VERTEX] = positions;
+		array[Mesh::ARRAY_COLOR] = colors;
 
 		mesh->add_surface_from_arrays(Mesh::PrimitiveType::PRIMITIVE_POINTS, array);
 		emit_signal("chunk_loaded", mesh);
 	}
-
-	//void print_type(const Variant& p_variant) const
-	//{
-	//	print_line(vformat("Type: %d", p_variant.get_type()));
-	//}
 };
 
 void initialize_example_module(ModuleInitializationLevel p_level)
@@ -60,7 +104,8 @@ void uninitialize_example_module(ModuleInitializationLevel p_level) {
 	}
 }
 
-extern "C" {
+extern "C"
+{
 	GDExtensionBool GDE_EXPORT native_init(
 		GDExtensionInterfaceGetProcAddress p_get_proc_address,
 		GDExtensionClassLibraryPtr p_library,

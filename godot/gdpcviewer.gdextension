@@ -4,5 +4,7 @@ compatibility_minimum = 4.1
 reloadable = true
 
 [libraries]
-windows.debug.x86_64 =   "res://../build/Debug/gdpcviewer.dll"
-windows.release.x86_64 = "res://../build/Release/gdpcviewer.dll"
+windows.x86_64 = "res://../install/bin/gdpcviewer.dll"
+linux.x86_64   = "res://../install/lib/libgdpcviewer.so"
+macos.arm64    = "res://../install/lib/libgdpcviewer.dylib"
+ios.arm64      = "res://../install/lib/libgdpcviewer.a"

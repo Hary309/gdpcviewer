@@ -5,95 +5,376 @@ on:
   pull_request:
   workflow_dispatch:
 
+env:
+  GODOT_VERSION: "4.4.1"                  # Change to your exact Godot version
+  EXPORT_NAME: "com.piotr.gdpcviewer"     # Change to your game's export name
+  GODOT_PROJECT_PATH: "godot"             # Change to your Godot subfolder (e.g. "game" or "godot")
+
 jobs:
+  # ────────────────────────────────────────────────────────────────
+  # C++ / GDExtension builds
+  # ────────────────────────────────────────────────────────────────
   build-windows:
     name: Build (Windows)
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
+      - name: Cache vcpkg packages (Windows)
+        uses: actions/cache@v5
+        with:
+          path: build/vcpkg_installed
+          key: vcpkg-windows-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-windows-
 
       - name: Setup vcpkg
+        uses: johnwason/vcpkg-action@v7
         id: vcpkg
-        uses: microsoft/vcpkg-action@v2
-
-      - name: Export VCPKG_ROOT
-        shell: pwsh
-        run: |
-          Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_ROOT=${{ steps.vcpkg.outputs.vcpkg-root }}"
+        with:
+          manifest-dir: ${{ github.workspace }}
+          triplet: x64-windows
+          token: ${{ secrets.GITHUB_TOKEN }}
+          github-binarycache: true
+        continue-on-error: true
 
       - name: Configure (preset)
         shell: pwsh
-        run: cmake --preset default
+        run: cmake --preset ci-windows ${{ steps.vcpkg.outputs.vcpkg-cmake-config }}
 
       - name: Build and install
         shell: pwsh
-        run: cmake --build --preset default --config Release --target install
+        run: cmake --build --preset ci-windows --config Release --target install
 
-      - name: Zip install directory
-        shell: pwsh
-        run: Compress-Archive -Path install\* -DestinationPath build-windows.zip -Force
+      - name: Cache build artifacts (Windows)
+        uses: actions/cache/save@v5
+        if: always()
+        with:
+          path: build
+          key: cmake-build-windows-${{ github.sha }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-windows
-          path: build-windows.zip
+          path: install/
 
   build-linux:
     name: Build (Linux)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
+      - name: Cache vcpkg packages (Linux)
+        uses: actions/cache@v5
+        with:
+          path: |
+            build/vcpkg_installed
+            ~/.vcpkg-clion-profile.yaml
+          key: vcpkg-linux-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-linux-
 
       - name: Setup vcpkg
+        uses: johnwason/vcpkg-action@v7
         id: vcpkg
-        uses: microsoft/vcpkg-action@v2
+        with:
+          manifest-dir: ${{ github.workspace }}
+          triplet: x64-linux
+          token: ${{ secrets.GITHUB_TOKEN }}
+          github-binarycache: true
+        continue-on-error: true
 
-      - name: Export VCPKG_ROOT
-        run: echo "VCPKG_ROOT=${{ steps.vcpkg.outputs.vcpkg-root }}" >> $GITHUB_ENV
-
-      - name: Configure
-        run: cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install -DCMAKE_BUILD_TYPE=Release
+      - name: Configure (preset)
+        shell: bash
+        run: cmake --preset ci-linux ${{ steps.vcpkg.outputs.vcpkg-cmake-config }}
 
       - name: Build and install
-        run: cmake --build build --config Release --target install -- -j$(nproc)
+        run: cmake --build --preset ci-linux --config Release --target install -- -j$(nproc)
 
-      - name: Zip install directory
-        run: zip -r build-linux.zip install
+      - name: Cache build artifacts (Linux)
+        uses: actions/cache/save@v5
+        if: always()
+        with:
+          path: build
+          key: cmake-build-linux-${{ github.sha }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-linux
-          path: build-linux.zip
+          path: install/
 
   build-ios:
     name: Build (iOS)
     runs-on: macos-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
+      - name: Cache vcpkg packages (iOS)
+        uses: actions/cache@v5
+        with:
+          path: |
+            build/vcpkg_installed
+            ~/.vcpkg-clion-profile.yaml
+          key: vcpkg-ios-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-ios-
 
       - name: Setup vcpkg
+        uses: johnwason/vcpkg-action@v7
         id: vcpkg
-        uses: microsoft/vcpkg-action@v2
+        with:
+          manifest-dir: ${{ github.workspace }}
+          triplet: arm64-ios
+          token: ${{ secrets.GITHUB_TOKEN }}
+          github-binarycache: true
+        continue-on-error: true
 
-      - name: Export VCPKG_ROOT
-        run: echo "VCPKG_ROOT=${{ steps.vcpkg.outputs.vcpkg-root }}" >> $GITHUB_ENV
+      - name: Configure (preset)
+        shell: bash
+        run: cmake --preset ci-ios ${{ steps.vcpkg.outputs.vcpkg-cmake-config }}
 
-      - name: Configure for iOS (Xcode)
-        run: cmake -S . -B build -G Xcode -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        shell: bash
+        run: |
+          xcodebuild \
+            -project ${{ github.workspace }}/build/gdpcviewer.xcodeproj \
+            -target ALL_BUILD \
+            -configuration Release \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM=""
 
-      - name: Build and install
-        run: cmake --build build --config Release --target install
+      - name: Install
+        shell: bash
+        run: cmake --install ${{ github.workspace }}/build --config Release
 
-      - name: Zip install directory
-        run: zip -r build-ios.zip install
+      - name: Cache build artifacts (iOS)
+        uses: actions/cache/save@v5
+        if: always()
+        with:
+          path: build
+          key: cmake-build-ios-${{ github.sha }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-ios
-          path: build-ios.zip
+          path: install/
+
+  build-macos:
+    name: Build (macOS)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Cache vcpkg packages (macOS)
+        uses: actions/cache@v5
+        with:
+          path: |
+            build/vcpkg_installed
+            ~/.vcpkg-clion-profile.yaml
+          key: vcpkg-macos-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-macos-
+
+      - name: Setup vcpkg
+        uses: johnwason/vcpkg-action@v7
+        id: vcpkg
+        with:
+          manifest-dir: ${{ github.workspace }}
+          triplet: arm64-osx
+          token: ${{ secrets.GITHUB_TOKEN }}
+          github-binarycache: true
+        continue-on-error: true
+
+      - name: Configure (preset)
+        shell: bash
+        run: cmake --preset ci-macos ${{ steps.vcpkg.outputs.vcpkg-cmake-config }}
+
+      - name: Build and install
+        shell: bash
+        run: cmake --build --preset ci-macos --config Release --target install
+
+      - name: Cache build artifacts (macOS)
+        uses: actions/cache/save@v5
+        if: always()
+        with:
+          path: build
+          key: cmake-build-macos-${{ github.sha }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-macos
+          path: install/
+
+  # ────────────────────────────────────────────────────────────────
+  # Godot exports — download C++ artifacts, inject into project, export
+  # ────────────────────────────────────────────────────────────────
+  godot-export-windows:
+    name: Godot Export (Windows)
+    needs: build-windows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download GDExtension binaries (Windows)
+        uses: actions/download-artifact@v8
+        with:
+          name: build-windows
+          path: install
+
+      - name: Install Godot + Export Templates
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+          include-templates: true
+
+      - name: Export (Windows)
+        run: |
+          mkdir -p build/windows
+          godot --headless --path ${{ env.GODOT_PROJECT_PATH }} \
+            --export-release "Windows" \
+            ${{ github.workspace }}/build/windows/${{ env.EXPORT_NAME }}.exe
+
+      - name: Zip export
+        run: zip -r godot-windows.zip build/windows
+
+      - name: Upload Godot artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: godot-windows
+          path: godot-windows.zip
+
+  godot-export-linux:
+    name: Godot Export (Linux)
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download GDExtension binaries (Linux)
+        uses: actions/download-artifact@v8
+        with:
+          name: build-linux
+          path: install
+
+      - name: Install Godot + Export Templates
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+          include-templates: true
+
+      - name: Export (Linux)
+        run: |
+          mkdir -p build/linux
+          godot --headless --path ${{ env.GODOT_PROJECT_PATH }} \
+            --export-release "Linux" \
+            ${{ github.workspace }}/build/linux/${{ env.EXPORT_NAME }}.x86_64
+
+      - name: Zip export
+        run: zip -r godot-linux.zip build/linux
+
+      - name: Upload Godot artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: godot-linux
+          path: godot-linux.zip
+
+  godot-export-ios:
+    name: Godot Export (iOS)
+    needs: [build-ios, build-macos]
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download GDExtension binaries (macOS)
+        uses: actions/download-artifact@v8
+        with:
+          name: build-macos
+          path: install
+
+      - name: Download GDExtension binaries (iOS)
+        uses: actions/download-artifact@v8
+        with:
+          name: build-ios
+          path: install
+
+      - name: Install Godot + Export Templates
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+          include-templates: true
+
+      - name: Copy Libraries to Link Folder
+        run: |
+          mkdir -p ${{ github.workspace }}/build/ios/install/lib
+          # Copy your plugin library
+          cp ${{ github.workspace }}/install/lib/libgdpcviewer.a ${{ github.workspace }}/build/ios/install/lib/
+          # Copy the specific godot-cpp library you provided
+          cp ${{ github.workspace }}/install/lib/libgodot-cpp.ios.template_release.arm64.a ${{ github.workspace }}/build/ios/install/lib/
+
+      - name: Export Godot iOS Project (Xcode only)
+        run: |
+          mkdir -p ${{ github.workspace }}/build/ios
+          godot --headless --path godot \
+            --export-release "iOS" \
+            ${{ github.workspace }}/build/ios/app
+
+      - name: Build Unsigned Xcode Archive
+        run: |
+          cd ${{ github.workspace }}/build/ios
+          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
+
+          xcodebuild archive \
+            -project app.xcodeproj \
+            -scheme app \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath unsigned.xcarchive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED="NO" \
+            CODE_SIGNING_ALLOWED="NO" \
+            OTHER_LDFLAGS="-isysroot $SDK_PATH \
+              -F$SDK_PATH/System/Library/Frameworks \
+              -L$SDK_PATH/usr/lib \
+              -framework CoreAudio \
+              -framework AVFoundation \
+              -framework AudioToolbox \
+              -L${{ github.workspace }}/build/ios/app.xcframework/ios-arm64 \
+              -lgodot \
+              -L${{ github.workspace }}/build/ios/install/lib \
+              -lgdpcviewer \
+              -lgodot-cpp.ios.template_release.arm64"
+
+      - name: Package Unsigned IPA (Payload Method)
+        run: |
+          cd ${{ github.workspace }}/build/ios
+          APP_PATH=$(find unsigned.xcarchive/Products/Applications -name "*.app" -maxdepth 1 | head -n 1)
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+          zip -qr gdpcviewer-unsigned.ipa Payload
+          rm -rf Payload
+
+      - name: Upload Unsigned IPA
+        uses: actions/upload-artifact@v7
+        with:
+          name: godot-ios-unsigned-ipa
+          path: build/ios/gdpcviewer-unsigned.ipa
+
+      - name: Upload project
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: godot-ios-xcode-project
+          path: ${{ github.workspace }}/build/ios

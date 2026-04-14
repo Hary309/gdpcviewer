@@ -9,12 +9,91 @@
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
         "CMAKE_INSTALL_PREFIX": "${sourceDir}/install"
       }
+    },
+    {
+      "name": "ci-windows",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install",
+        "CMAKE_BUILD_TYPE": "Release",
+        "VCPKG_BUILD_TYPE": "release",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "VCPKG_MANIFEST_MODE": "ON"
+      }
+    },
+    {
+      "name": "ci-linux",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install",
+        "CMAKE_BUILD_TYPE": "Release",
+        "VCPKG_BUILD_TYPE": "release",
+        "VCPKG_TARGET_TRIPLET": "x64-linux",
+        "VCPKG_MANIFEST_MODE": "ON"
+      }
+    },
+    {
+      "name": "ci-ios",
+      "generator": "Xcode",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install",
+        "CMAKE_BUILD_TYPE": "Release",
+        "VCPKG_BUILD_TYPE": "release",
+        "VCPKG_TARGET_TRIPLET": "arm64-ios",
+        "VCPKG_MANIFEST_MODE": "ON",
+        "CMAKE_SYSTEM_NAME": "iOS",
+        "CMAKE_OSX_SYSROOT": "iphoneos",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "18.5",
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE": "Manual",
+        "CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY": "",
+        "CMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED": "NO",
+        "CMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED": "NO",
+        "CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM": ""
+      }
+    },
+    {
+      "name": "ci-macos",
+      "generator": "Xcode",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install",
+        "CMAKE_BUILD_TYPE": "Release",
+        "VCPKG_BUILD_TYPE": "release",
+        "VCPKG_TARGET_TRIPLET": "arm64-osx",
+        "VCPKG_MANIFEST_MODE": "ON",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "11.0",
+        "CMAKE_OSX_ARCHITECTURES": "arm64"
+      }
     }
   ],
   "buildPresets": [
     {
       "name": "default",
       "configurePreset": "default"
+    },
+    {
+      "name": "ci-windows",
+      "configurePreset": "ci-windows"
+    },
+    {
+      "name": "ci-linux",
+      "configurePreset": "ci-linux"
+    },
+    {
+      "name": "ci-ios",
+      "configurePreset": "ci-ios"
+    },
+    {
+      "name": "ci-macos",
+      "configurePreset": "ci-macos"
     }
   ]
 }

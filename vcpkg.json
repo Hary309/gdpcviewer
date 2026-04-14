@@ -1,6 +1,5 @@
 {
   "dependencies": [
-    "godot-cpp",
-    "libe57format"
+    "godot-cpp"
   ]
 }
