@@ -17,7 +17,7 @@ func _loader_chunk_loaded(mesh: Mesh) -> void:
 	mesh_instance.mesh = mesh
 
 func _on_button_pressed() -> void:
-	$E57FileDialog.popup_file_dialog()
+	$E57FileDialog.show()
 
 func _on_e_57_file_dialog_file_selected(path: String) -> void:
 	var point_count := 10000
