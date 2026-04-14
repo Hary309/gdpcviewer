@@ -371,10 +371,3 @@ jobs:
         with:
           name: godot-ios-unsigned-ipa
           path: build/ios/gdpcviewer-unsigned.ipa
-
-      - name: Upload project
-        uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: godot-ios-xcode-project
-          path: ${{ github.workspace }}/build/ios
